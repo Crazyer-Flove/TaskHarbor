@@ -1,0 +1,4 @@
+[
+  {"id":"sample-1","title":"Prepare the weekly review","quadrant":"q2","period":"week","planDate":"2026-10-26","date":"","due":"","done":false,"repeat":"none","subtasks":[],"schemaVersion":3},
+  {"id":"sample-2","title":"Submit the fictional proposal","quadrant":"q1","period":"day","planDate":"2026-10-28","date":"2026-10-30","due":"18:00","done":false,"repeat":"none","subtasks":[],"schemaVersion":3}
+]

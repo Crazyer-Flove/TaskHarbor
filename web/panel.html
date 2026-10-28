@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TaskHarbor</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body data-mode="panel" data-layout="workbench">
+    <button id="dockFallback" aria-label="打开 TaskHarbor">
+      <img src="brand.png" alt="" />
+    </button>
+    <div id="app" aria-busy="false">
+      <header id="titlebar" class="titlebar">
+        <div class="brand">
+          <img src="brand.png" alt="" /><strong>TaskHarbor</strong
+          ><span>桌面四象限</span>
+        </div>
+        <nav aria-label="窗口操作">
+          <button id="layoutToggle" title="切换小面板与工作台">小面板</button
+          ><button
+            id="pinToggle"
+            aria-pressed="false"
+            title="固定面板，不自动收起"
+          >
+            固定</button
+          ><button id="settingsOpen">设置</button
+          ><button id="collapse">收起</button>
+        </nav>
+      </header>
+      <div class="toolbar">
+        <div
+          id="scopeTabs"
+          class="segmented"
+          role="group"
+          aria-label="查看计划范围"
+        >
+          <button data-scope="day">今天</button
+          ><button data-scope="week">本周</button
+          ><button data-scope="month">本月</button
+          ><button data-scope="all">全部</button>
+        </div>
+        <label class="search"
+          ><span class="sr-only">搜索任务</span
+          ><input
+            id="search"
+            type="search"
+            placeholder="搜索任务…"
+            autocomplete="off"
+        /></label>
+        <button id="aiOpen" class="secondary">AI 整理</button
+        ><button id="bulkToggle" aria-pressed="false">批量</button>
+      </div>
+      <div class="statusbar">
+        <span id="rangeLabel"></span
+        ><span id="scopeCounts" aria-live="polite"></span
+        ><button id="viewToggle" aria-pressed="false">列表</button
+        ><button id="statsToggle" aria-expanded="false" aria-controls="stats">
+          统计
+        </button>
+      </div>
+      <section id="stats" class="stats" hidden aria-label="任务统计">
+        <div class="metric">
+          <strong id="globalPending">0</strong><span>全部待处理</span>
+        </div>
+        <div class="metric">
+          <strong id="globalLate">0</strong><span>全部逾期</span>
+        </div>
+        <div class="metric">
+          <strong id="todayDone">0</strong><span>今日实际完成</span>
+        </div>
+        <div class="trend-block">
+          <div>完成趋势 <button id="trendToggle">近 7 天</button></div>
+          <div id="trend" class="trend" aria-label="按本地完成日期统计"></div>
+        </div>
+      </section>
+      <div id="saveError" class="error-banner" role="alert" hidden>
+        <span id="saveErrorText"></span><button id="saveRetry">重试</button>
+      </div>
+      <div id="bulkBar" class="bulkbar" hidden>
+        <span id="selectionCount">已选 0 项</span
+        ><button data-bulk="complete">完成</button
+        ><button data-bulk="today">安排今天</button
+        ><button data-bulk="delete" class="danger-text">移入回收站</button
+        ><button id="bulkCancel">取消选择</button>
+      </div>
+      <main class="workspace" id="workspace">
+        <div id="filterNotice" class="filter-notice" hidden>
+          <span id="filterNoticeText"></span
+          ><button id="clearFilters">显示全部</button>
+        </div>
+        <div id="matrix" class="matrix" aria-label="四象限任务看板"></div>
+        <details id="completed" class="completed">
+          <summary id="completedSummary">已完成 0</summary>
+          <div id="completedList"></div>
+        </details>
+      </main>
+      <footer class="composer">
+        <form id="captureForm">
+          <label class="sr-only" for="newTitle">新任务内容</label
+          ><input
+            id="newTitle"
+            placeholder="写下一件要做的事，按 Enter 添加…"
+            maxlength="500"
+            autocomplete="off"
+          /><button type="submit" id="addTask" class="primary">添加</button>
+        </form>
+        <div class="capture-options">
+          <span>计划</span>
+          <div
+            id="newPeriod"
+            class="segmented small"
+            role="group"
+            aria-label="新任务计划安排"
+          >
+            <button data-period="day">本日</button
+            ><button data-period="week">本周</button
+            ><button data-period="month">本月</button>
+          </div>
+          <label
+            ><span class="sr-only">新任务象限</span
+            ><select id="newQuadrant">
+              <option value="q1">重要紧急</option>
+              <option value="q2" selected>重要不紧急</option>
+              <option value="q3">不重要紧急</option>
+              <option value="q4">不重要不紧急</option>
+            </select></label
+          ><button
+            id="captureMore"
+            aria-expanded="false"
+            aria-controls="captureExtra"
+          >
+            截止时间 · 可选</button
+          ><span id="saveStatus" role="status">正在载入…</span>
+        </div>
+        <div id="captureExtra" class="capture-extra" hidden>
+          <label>截止日期 <input type="date" id="newDate" /></label
+          ><label>时刻 <input type="time" id="newTime" /></label
+          ><button id="clearDeadline">清除截止</button
+          ><span>计划范围不会自动设置截止时间</span>
+        </div>
+      </footer>
+    </div>
+
+    <div id="drawerScrim" class="drawer-scrim" hidden></div>
+    <aside id="editor" class="editor" hidden aria-labelledby="editorHeading">
+      <header>
+        <h2 id="editorHeading">编辑任务</h2>
+        <button id="editClose">关闭</button>
+      </header>
+      <form id="editForm" class="editor-form">
+        <label
+          >任务内容<textarea
+            id="editTitle"
+            rows="3"
+            maxlength="500"
+            required
+          ></textarea>
+        </label>
+        <label
+          >所属象限<select id="editQuadrant">
+            <option value="q1">重要紧急</option>
+            <option value="q2">重要不紧急</option>
+            <option value="q3">不重要紧急</option>
+            <option value="q4">不重要不紧急</option>
+          </select></label
+        >
+        <div class="field-pair">
+          <label
+            >计划安排<select id="editPeriod">
+              <option value="day">日计划</option>
+              <option value="week">周计划</option>
+              <option value="month">月计划</option>
+            </select></label
+          ><label
+            >计划日期<input type="date" id="editPlanDate" required
+          /></label>
+        </div>
+        <p class="help">周计划按所选日期所在周安排，月计划按所在月安排。</p>
+        <div class="field-pair">
+          <label>截止日期 · 可选<input type="date" id="editDate" /></label
+          ><label>截止时刻<input type="time" id="editTime" /></label>
+        </div>
+        <p class="help">没有明确期限可以留空；只有明确截止的任务才会逾期。</p>
+        <label class="check-label"
+          ><input
+            type="checkbox"
+            id="editRemind"
+          />到点提醒（需程序运行，日期未填时刻则上午 9 点）</label
+        >
+        <button type="button" id="snooze" class="text-button">
+          此任务稍后 15 分钟提醒
+        </button>
+        <label
+          >重复规则<select id="editRepeat">
+            <option value="none">不重复</option>
+            <option value="day">完成后生成下一日</option>
+            <option value="week">完成后生成下一周</option>
+            <option value="month">完成后生成下一月</option>
+          </select></label
+        >
+        <p class="help">按完成生成下一次；错过的周期不批量补建。</p>
+        <section class="subtasks">
+          <h3>子任务 <span id="subtaskCount"></span></h3>
+          <div id="subtaskList"></div>
+          <div class="inline-field">
+            <input
+              id="subtaskInput"
+              maxlength="200"
+              placeholder="添加一个子任务"
+            /><button type="button" id="subtaskAdd">添加</button>
+          </div>
+        </section>
+        <p id="editError" class="field-error" role="alert"></p>
+        <div class="editor-actions">
+          <button class="primary" type="submit" id="editSave">保存修改</button
+          ><button type="button" id="editCancel">取消</button
+          ><button type="button" id="editDelete" class="danger-text">
+            移入回收站
+          </button>
+        </div>
+      </form>
+    </aside>
+
+    <section class="layer" id="settings" hidden aria-labelledby="settingsTitle">
+      <header>
+        <h2 id="settingsTitle">设置</h2>
+        <button id="settingsClose">保存并返回</button>
+      </header>
+      <div class="layer-body settings-grid">
+        <fieldset>
+          <legend>窗口与提醒</legend>
+          <label
+            >鼠标移开后收起<select id="settingIdle">
+              <option value="1000">1 秒</option>
+              <option value="3000">3 秒</option>
+              <option value="5000">5 秒</option>
+              <option value="10000">10 秒</option>
+              <option value="0">仅手动</option>
+            </select></label
+          ><label class="check-label"
+            ><input type="checkbox" id="settingTop" />窗口置顶</label
+          ><label class="check-label"
+            ><input type="checkbox" id="settingAuto" />开机启动</label
+          ><label class="check-label"
+            ><input
+              type="checkbox"
+              id="settingReminders"
+            />允许已设置任务的桌面提醒</label
+          ><label class="check-label"
+            ><input type="checkbox" id="settingQuiet" />22:00–08:00
+            静默提醒</label
+          ><label class="check-label"
+            ><input
+              type="checkbox"
+              id="settingOverdue"
+            />今天视图同时显示逾期任务</label
+          ><label
+            >操作音效<select id="settingSound">
+              <option value="soft">柔和</option>
+              <option value="ding">清脆</option>
+              <option value="none">关闭</option>
+            </select></label
+          ><label
+            >贴边把手不透明度<input
+              type="range"
+              id="settingAlpha"
+              min="45"
+              max="100"
+          /></label>
+          <p class="help" id="hotkeyStatus">全局快捷键 Ctrl + Shift + T</p>
+          <p class="help">
+            退出后不再提醒；系统免打扰可能抑制通知。可从托盘暂停提醒 1 小时。
+          </p>
+        </fieldset>
+        <fieldset>
+          <legend>本地数据</legend>
+          <p id="dataPath" class="path-text"></p>
+          <div class="button-row">
+            <button id="exportData">导出任务备份</button
+            ><button id="importData">导入备份</button
+            ><button id="openData">打开数据目录</button
+            ><button id="changeData">更换存储位置</button
+            ><button id="trashOpen">回收站</button
+            ><button id="createShortcut">创建桌面快捷方式</button>
+          </div>
+          <p class="help">
+            导入前自动保留当前任务备份。任务备份不包含 API
+            Key。回收站不会自动清空。
+          </p>
+          <p id="migrationNote" class="help"></p>
+        </fieldset>
+        <fieldset class="ai-settings">
+          <legend>AI 整理 · 可选配置</legend>
+          <label
+            >兼容服务<select id="settingProvider">
+              <option value="deepseek">DeepSeek</option>
+              <option value="qwen">通义千问</option>
+              <option value="openai">OpenAI</option>
+              <option value="ollama">Ollama（本地，无需 Key）</option>
+              <option value="custom">自定义 OpenAI 兼容服务</option>
+            </select></label
+          ><label
+            >接口地址<input
+              id="settingUrl"
+              type="url"
+              placeholder="https://api.example.com/v1"
+              spellcheck="false" /></label
+          ><label>模型名称<input id="settingModel" spellcheck="false" /></label
+          ><label
+            >API Key<input
+              id="settingKey"
+              type="password"
+              autocomplete="off"
+              spellcheck="false"
+          /></label>
+          <p class="help">
+            仅使用 AI
+            整理时，输入文字及选中的图片会发送到这里配置的服务；普通任务操作完全本地运行。Key
+            使用 Windows 当前用户加密。
+          </p>
+          <details>
+            <summary>高级与图片模型</summary>
+            <label
+              >接口路径<input
+                id="settingEndpoint"
+                placeholder="/chat/completions" /></label
+            ><label class="check-label"
+              ><input
+                type="checkbox"
+                id="settingImageSeparate"
+              />图片使用独立模型</label
+            ><label>图片接口地址<input id="settingImageUrl" type="url" /></label
+            ><label>图片模型<input id="settingImageModel" /></label
+            ><label
+              >图片 API Key<input
+                id="settingImageKey"
+                type="password"
+                autocomplete="off" /></label
+            ><label class="check-label"
+              ><input
+                id="settingCustomPrompt"
+                type="checkbox"
+              />使用自定义系统提示词</label
+            ><label
+              >自定义提示词<textarea id="settingPrompt" rows="5"></textarea>
+            </label>
+          </details>
+        </fieldset>
+        <fieldset>
+          <legend>关于 TaskHarbor</legend>
+          <p id="version"></p>
+          <p class="help">个人桌面任务工作台 · MIT 开源许可</p>
+          <button id="quit" class="danger-text">退出 TaskHarbor</button>
+        </fieldset>
+        <p id="settingsError" class="field-error" role="alert"></p>
+      </div>
+    </section>
+
+    <section class="layer" id="ai" hidden aria-labelledby="aiTitle">
+      <header>
+        <h2 id="aiTitle">AI 整理任务</h2>
+        <button id="aiClose">返回</button>
+      </header>
+      <div class="layer-body ai-body">
+        <div id="aiInput">
+          <p id="aiDestination" class="help"></p>
+          <label
+            >描述要做的事<textarea
+              id="aiText"
+              rows="6"
+              placeholder="例如：本周准备季度复盘，周五下午三点前交客户方案"
+            ></textarea></label
+          ><label class="upload-label"
+            >选择截图或图片（最多 3 张）<input
+              type="file"
+              id="aiFiles"
+              accept="image/*"
+              multiple
+          /></label>
+          <div id="aiImages"></div>
+          <p class="help">
+            支持粘贴截图。不明确的截止时间将留空，生成后可逐条修改再加入。
+          </p>
+          <button id="aiGenerate" class="primary">生成并预览</button>
+        </div>
+        <div id="aiRunning" hidden>
+          <p id="aiProgress" role="status">正在整理…</p>
+          <pre id="aiStream"></pre>
+          <button id="aiStop">取消生成</button>
+        </div>
+        <div id="aiPreview" hidden>
+          <p id="aiPreviewCount"></p>
+          <div id="aiPreviewList"></div>
+          <div class="button-row">
+            <button id="aiAgain">返回输入</button
+            ><button id="aiCommit" class="primary">将选中项加入任务</button>
+          </div>
+        </div>
+        <p id="aiError" class="field-error" role="alert"></p>
+      </div>
+    </section>
+
+    <section class="layer" id="trash" hidden aria-labelledby="trashTitle">
+      <header>
+        <h2 id="trashTitle">回收站</h2>
+        <button id="trashClose">返回</button>
+      </header>
+      <div class="layer-body">
+        <p class="help">任务可随时恢复。永久清空需要再次确认。</p>
+        <div id="trashList"></div>
+        <button id="trashEmpty" class="danger-text">永久清空回收站</button>
+      </div>
+    </section>
+    <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+      <h2 id="confirmTitle"></h2>
+      <p id="confirmText"></p>
+      <div class="button-row">
+        <button id="confirmNo">取消</button
+        ><button id="confirmYes" class="primary">确定</button>
+      </div>
+    </dialog>
+    <div id="toast" role="status" hidden>
+      <span id="toastText"></span><button id="undo" hidden>撤销</button
+      ><button id="toastAction" hidden>查看</button
+      ><button id="toastClose" aria-label="关闭提示">关闭</button>
+    </div>
+    <div id="loadFailure" class="load-failure" hidden role="alert">
+      <h2>任务暂时无法载入</h2>
+      <p id="loadFailureText"></p>
+      <button id="reload">重新载入</button>
+    </div>
+    <script src="model.js"></script>
+    <script src="panel.js"></script>
+  </body>
+</html>
