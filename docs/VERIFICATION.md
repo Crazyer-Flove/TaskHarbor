@@ -11,6 +11,7 @@ Recorded on 2026-10-28 (Asia/Shanghai).
 - The generated source ZIP was extracted into an empty directory, restored its own SDK cache, built successfully and passed all 86 checks again. This caught and fixed a first-restore exit-code handling issue.
 - Windows x64 executable compiled at version 3.0.0.0, with embedded application resources and icon.
 - The actual executable's noninteractive self-test passed: native loader loaded; installed WebView2 Runtime detected as 155.0.4283.62; all embedded UI files extracted; isolated-directory writes succeeded.
+- Hosted Windows CI passed for the initial source publication: [run 40647826123](https://github.com/Crazyer-Flove/TaskHarbor/actions/runs/40647826123), commit `15d63c8c57e20023a0af4e9cf4b12a5da4d080ba`. SDK restore, source audit, all test stages, executable build, packaging and artifact upload completed successfully. The README badge reports later runs separately.
 
 All 86 automated checks passed. Reproduce using `scripts/test.ps1`; fixtures are created under `build/`. These tests do not read or mutate personal task/configuration directories.
 
@@ -27,8 +28,11 @@ Still required before a stable public announcement:
 - Real Windows notification presentation, quiet hours and resume from sleep.
 - Keyboard/screen-reader behavior and final rendered text/target contrast.
 - A real user-selected AI endpoint; no paid or personal AI request was made during tests.
-- Hosted GitHub Actions execution; the workflow is supplied but not yet run on GitHub.
 
 No team collaboration, cloud sync, account service or closed-application reminder scheduler is implemented. Those were explicitly deferred product directions, not part of this local desktop release.
 
 See `design-qa.md` for the blocking visual QA status. The repository is suitable for source review and independent building; its desktop behavior still requires the checks above.
+
+## README illustrations
+
+The bilingual images in `docs/images/` are documentation illustrations drawn for the README, with fictional task text. They explain the quadrant layout and the distinction between plans and deadlines. They are not captured application screenshots, do not demonstrate an English application interface, and do not change the desktop visual acceptance status above.

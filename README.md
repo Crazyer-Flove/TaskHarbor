@@ -2,99 +2,297 @@
 
 **A calm, local-first task workspace for Windows.**
 
-[![Windows build and test](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml/badge.svg)](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml) · [GitHub repository](https://github.com/Crazyer-Flove/TaskHarbor) · [Report a bug](https://github.com/Crazyer-Flove/TaskHarbor/issues)
+[![Windows build and test](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml/badge.svg)](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-526b4f.svg)](LICENSE)
+[![Platform: Windows x64](https://img.shields.io/badge/Platform-Windows%20x64-657467.svg)](#requirements)
 
-[简体中文](README.zh-CN.md) · [User guide](docs/USER_GUIDE.md) · [Development](docs/DEVELOPMENT.md) · [Verification](docs/VERIFICATION.md)
+[简体中文](README.zh-CN.md) · [Download](#download-and-run) · [User guide](docs/USER_GUIDE.md) · [Report a bug](https://github.com/Crazyer-Flove/TaskHarbor/issues/new/choose)
 
-TaskHarbor combines an Eisenhower matrix with a desktop edge handle, quick capture, and an optional compact panel. The application UI is currently Simplified Chinese; its product name, repository and developer documentation use English.
+TaskHarbor brings an Eisenhower matrix, day/week/month planning and quick desktop capture into one personal workspace. Keep important work visible, collect small tasks without losing context, and give a task a deadline only when it actually has one.
+
+**Current version: 3.0.0. The application interface is Simplified Chinese.** This English README documents the same application; an English interface is not currently implemented. Core task management works locally without an account or AI configuration.
+
+![TaskHarbor workbench illustration with four priority quadrants, planning filters and quick entry](docs/images/overview-en.png)
+
+*Documentation illustration with fictional tasks, not a screenshot. The English labels explain the layout; the current application UI is Simplified Chinese.*
+
+## Contents
+
+- [Features](#features)
+- [Download and run](#download-and-run)
+- [Your first task](#your-first-task)
+- [Planning and deadlines](#planning-and-deadlines)
+- [Desktop workflow and shortcuts](#desktop-workflow-and-shortcuts)
+- [Reminders and recurring tasks](#reminders-and-recurring-tasks)
+- [Optional AI assistance](#optional-ai-assistance)
+- [Storage, backups and privacy](#storage-backups-and-privacy)
+- [Build, test and package](#build-test-and-package)
+- [Verification and current limits](#verification-and-current-limits)
+- [Troubleshooting](#troubleshooting)
+- [Contributing and license](#contributing-and-license)
 
 ## Features
 
-- Four quadrants, drag-to-reclassify, search, and board/list views.
-- Day, week and month planning **independent of optional deadlines**.
-- A workbench, compact panel, and task editor that preserves board context.
-- Subtasks, batch completion, scheduling for today, and recoverable deletion.
-- Undo, a recycle bin, explicit save status, rollback and retry after failed writes.
-- Completion-driven daily/weekly/monthly recurrence, including month-end dates.
-- A system tray entry, `Ctrl+Shift+T` capture shortcut, configurable edge collapse and pinning.
-- Opt-in task reminders while the app is running, quiet hours and snooze.
-- Optional OpenAI-compatible text/image task extraction with editable previews; loopback services may omit an API key.
-- Local JSON storage, atomic writes, task-only import/export and Windows current-user key encryption.
-- Migration from the previous DeskTodo application without deleting the original files.
+Designed for individual work, study plans and everyday task capture on a Windows desktop.
 
-## Run
+| Area | Included behavior |
+| --- | --- |
+| Priorities | Four importance/urgency quadrants, drag-to-reclassify and an editor alternative to dragging |
+| Planning | Day, week and month plans, a separate optional deadline, today/week/month/all filters |
+| Views | Matrix and list views, search, expandable statistics and completion trends |
+| Task details | A side editor, up to 50 subtasks per task, optional reminders and recurrence |
+| Bulk actions | Complete selected tasks, schedule them for today or move them to the recycle bin |
+| Recovery | Undo, recoverable deletion, import snapshots, failed-save rollback and retry |
+| Desktop access | Workbench/compact layouts, tray entry, edge handle, pinning and a capture shortcut |
+| AI assistance | Explicitly requested text/image extraction with an editable preview before adding tasks |
+| Local ownership | JSON storage, task-only import/export and encrypted API keys for the current Windows user |
 
-Use `TaskHarbor.exe` from a release package or build it locally. Exit the previous DeskTodo app before the first normal launch.
+| Quadrant | Suggested action | Example |
+| --- | --- | --- |
+| Important and urgent | Do first | Finish a client proposal due soon |
+| Important, not urgent | Schedule | Prepare a quarterly review or learning plan |
+| Urgent, not important | Handle promptly; consider delegating outside the app | Confirm a meeting time |
+| Neither important nor urgent | Review when time allows | Organize saved reading |
 
-Requirements:
+Quadrants are organizational labels. TaskHarbor does not assign work to other people or provide team collaboration.
 
-- Windows 10/11 **x64** with .NET Framework **4.6.2 or later**.
-- Microsoft Edge WebView2 Runtime. The SDK bundled with the executable does not replace the installed Runtime.
+## Download and run
 
-Double-click the executable, then click its screen-edge handle or use the tray icon. `Ctrl+Shift+T` opens capture when the shortcut is available. No administrator rights are required for normal use. A valid Runtime installation and a writable user data directory are required.
+### Requirements
 
-The executable is unsigned; builds do not include an Authenticode signature. Review the source or build it yourself according to your environment's software policy.
+| Component | Requirement |
+| --- | --- |
+| Operating system | Windows 10/11, **x64** |
+| .NET | .NET Framework **4.6.2 or later** |
+| Browser component | Installed Microsoft Edge **WebView2 Runtime** |
+| Permissions | A writable user-data directory; normal use does not require administrator rights |
+| Network | Not needed for core local tasks; needed for SDK restore or a remote AI service |
 
-## Build and test
+The embedded WebView2 **SDK** wrappers do not replace the installed **Runtime**. Current builds are unsigned.
 
-Windows PowerShell 5.1+ and the Windows .NET Framework compiler are sufficient to build. Node.js **22+** is required only for JavaScript tests. No npm installation or frontend bundler is needed.
+### Download a Windows build
+
+1. Open [Windows build and test](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml).
+2. Select a successful run for the version or commit you want.
+3. Download the **TaskHarbor-windows-x64** artifact. GitHub may require sign-in for Actions downloads.
+4. Extract the artifact, then extract its `TaskHarbor-3.0.0-windows-x64.zip`. Keep the accompanying notices and documentation.
+5. Run `TaskHarbor.exe`. Use the edge handle, tray or registered capture shortcut to open the panel.
+
+The workflow uploads a Windows ZIP and checksums. It does **not** automatically publish a GitHub Release. If an artifact has expired, build from source below.
+
+Exit the previous DeskTodo application before the first normal launch so both applications do not write to a shared legacy task path.
+
+## Your first task
+
+1. Open the workbench from the edge handle or tray.
+2. Type a short action in the bottom input, such as “Prepare quarterly review”.
+3. Select **本日 / 本周 / 本月** (day/week/month) and the priority quadrant.
+4. Expand **截止时间 · 可选** only if a deadline is needed, then press **Enter** or click Add.
+5. Click the task title to open its side editor. Add subtasks, adjust its plan or enable a reminder, then save.
+6. Complete the task when finished. Use undo for a mistaken action or the recycle bin to restore a deleted task.
+
+The top filter and bottom new-task plan are separate controls. If a new task does not match the current filter, use the notice's “查看” action to view it instead of adding a duplicate.
+
+## Planning and deadlines
+
+![A weekly plan and an independent optional Friday deadline, followed by capture, quadrant, plan and deadline steps](docs/images/planning-en.png)
+
+*Feature illustration, not an application screenshot. Examples are fictional.*
+
+**A plan answers “When will I work on this?” A deadline answers “When must it be finished?”** Changing a plan preserves its existing deadline. A task without a deadline does not become overdue just because its planning week or month ends.
+
+| View | What it includes |
+| --- | --- |
+| Today | Day plans for today; overdue tasks are additionally included by default and can be excluded in settings |
+| This week | Day and week plans overlapping the current week; month plans are not automatically included |
+| This month | Day, week and month plans overlapping the current month |
+| All | All tasks outside the recycle bin; completed tasks appear in the completed section |
+
+Calendar calculations use local dates; weeks start on **Monday**. Statistics use the actual completion date in local time, rather than the planned date.
+
+## Desktop workflow and shortcuts
+
+- Switch between **工作台** (workbench) and **小面板** (compact panel) in the same window.
+- Pin the panel to keep it open. Auto-collapse offers a 1, 3, 5 or 10 second delay, or manual-only mode.
+- Drag the title bar to move the panel; drag the edge handle to reposition it along the screen edge.
+- Entry, editing, confirmations and AI processing keep the panel expanded while work is in progress.
+- The tray can open a layout, pause reminders for one hour or exit the application.
+
+| Action | Shortcut |
+| --- | --- |
+| Global quick capture | `Ctrl+Shift+T`, when registration succeeds |
+| Search tasks | `Ctrl+F` |
+| Focus task entry | `Ctrl+N` |
+| Save task edits | `Ctrl+Enter` |
+| Undo the previous task operation | `Ctrl+Z`, outside an input field |
+| Return, close an editor, cancel selection or collapse | `Esc`, depending on the active layer |
+
+## Reminders and recurring tasks
+
+### Reminders
+
+Enable reminders in settings and opt in for each relevant task in its editor. A deadline date is required: a date with a time uses that time; a date without a time uses **09:00**.
+
+- **TaskHarbor must remain running.** Exiting stops checks.
+- The native host checks approximately every 10 seconds and catches up at most the preceding 24 hours.
+- Default quiet hours are **22:00–08:00**; eligible reminders can be checked after quiet hours end.
+- Snooze a task for 15 minutes or pause reminders for one hour from the tray.
+- Notifications omit task titles; clicking opens the task. Windows notification policy or Do Not Disturb may suppress presentation.
+
+No closed-application reminder scheduler or Windows scheduled task is installed.
+
+### Recurrence
+
+Daily, weekly and monthly recurrence is **completion-driven**. Completing a task creates its successor, which inherits its details, quadrant and reminder preference; subtask checkboxes reset.
+
+Monthly recurrence preserves a month-day anchor: January 31 → the last day of February → March 31. Late completion produces one applicable current/future instance rather than a backlog of every missed occurrence.
+
+Undoing completion also removes the newly generated occurrence. Simply reopening the old task is different: it does not delete an existing successor or create another duplicate when completed again.
+
+## Optional AI assistance
+
+Manual task management needs no AI configuration. To use **AI 整理**:
+
+1. Open **设置 → AI 整理 · 可选配置**.
+2. Select a compatible service; enter its base URL, model name and API key as appropriate.
+3. Advanced settings support a custom endpoint path and a separate image model. The service must support the selected request type.
+4. Enter text and optionally select up to **three images**.
+5. Check the displayed destination, then explicitly request generation.
+6. Review and edit proposed titles, quadrants, plans and deadlines before adding them.
+
+Remote endpoints require an API key; local loopback endpoints may omit it. Image extraction requires image support from the selected model/service. There is no bundled hosted service or included quota; provider charges depend on your own service and account.
+
+Only the text/images you explicitly submit go to the configured endpoint. TaskHarbor does not automatically send the task database to AI. Model output can be incorrect, so review the editable preview.
+
+## Storage, backups and privacy
+
+The default directory is `%APPDATA%\TaskHarbor`. Settings can select a custom task location; configuration and runtime state remain in the application-data directory.
+
+| Data | Purpose |
+| --- | --- |
+| `tasks.json` | Content, plans, deadlines, completion, subtasks and recycle-bin state |
+| `config.json` | Application preferences and encrypted AI keys |
+| `reminder-state.json` | Reminder delivery/snooze bookkeeping |
+| `WebView2/` | Embedded browser profile/cache |
+| `backups/tasks-before-import-*.json` | Snapshot beside the task file before importing a backup |
+
+Settings provide export, import, open data directory, change storage location and recycle bin actions. Task exports exclude configuration and API keys. The recycle bin does not empty itself; permanent clearing requires confirmation and cannot be undone.
+
+Writes use atomic replacement. A failed save rolls back task state, retains the capture draft and offers retry. Invalid/corrupt task files block writes so an empty state does not overwrite the original.
+
+API keys use Windows current-user **DPAPI** encryption. Task JSON and exports are **plaintext**, so protect backups as personal files. There is no built-in telemetry, account system or cloud sync.
+
+### Upgrading from DeskTodo
+
+The first normal launch copies old default data/configuration while retaining the original files. A legacy custom task path continues to be used. Existing deadlines are preserved; a `.before-taskharbor-v3.bak` snapshot is created before the first upgraded task-file write.
+
+Try an isolated demo without automatic legacy migration:
 
 ```powershell
+.\dist\TaskHarbor.exe --demo --data-dir .\build\demo
+```
+
+## Build, test and package
+
+### Developer requirements
+
+- Windows x64 and the .NET Framework compiler used by the build script.
+- Windows PowerShell **5.1+**.
+- **Git** to clone, or download/extract the source ZIP.
+- **Node.js 22+** for JavaScript tests and the packaging source audit.
+- Access to official NuGet for the first WebView2 SDK restore.
+
+The app uses C# 5, Windows Forms, WebView2 and plain HTML/CSS/JavaScript. The supplied scripts need no npm installation, frontend bundler, backend server or Visual Studio project.
+
+```powershell
+git clone https://github.com/Crazyer-Flove/TaskHarbor.git
+cd TaskHarbor
+
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1
 ```
 
-Or double-click `Build.cmd`. The first restore downloads the pinned **Microsoft.Web.WebView2 1.0.4191.47** SDK from official NuGet. Output is written to `dist/`; generated binaries and SDK caches are ignored by Git.
+For a build only, double-click `Build.cmd`. The first restore downloads pinned **Microsoft.Web.WebView2 1.0.4191.47** from official NuGet. Pass `-NoRestore` to `build.ps1` when dependencies are already restored.
 
-For an isolated demo:
+| Output in `dist/` | Contents |
+| --- | --- |
+| `TaskHarbor.exe` | Windows x64 app with embedded UI and SDK wrappers |
+| `release.json` | Version, platform, size, SDK version and executable SHA-256 |
+| `TaskHarbor-3.0.0-windows-x64.zip` | Executable, manifest, documentation and notices |
+| `TaskHarbor-3.0.0-source.zip` | Allowlisted source, documentation, assets and GitHub templates |
+| `SHA256SUMS.txt` | Checksums for the executable and both ZIPs |
 
-```powershell
-.\dist\TaskHarbor.exe --demo --data-dir .\build\demo
-```
+The source archive excludes personal data, configuration, restored dependencies and runtime profiles. The source ZIP is generated locally; current CI uploads the Windows ZIP and checksums.
 
-For a noninteractive diagnostic of the **actual release binary**:
+### Binary diagnostics
+
+After building, run a noninteractive check of the actual executable using an isolated directory:
 
 ```powershell
 $p = Start-Process .\dist\TaskHarbor.exe -ArgumentList '--self-test --data-dir .\build\binary-check' -PassThru -Wait
 Get-Content .\build\binary-check\self-test.json
+Get-FileHash .\dist\TaskHarbor.exe -Algorithm SHA256
 ```
 
-This checks the embedded SDK, native loader, installed Runtime, resources and directory writes. It does **not** verify visual layout or user interactions.
+This checks embedded resources, the native loader, installed Runtime and directory writes. It does not exercise the rendered UI or real notification presentation.
 
-## Data and privacy
-
-The default directory is `%APPDATA%\TaskHarbor`. `--data-dir` selects an isolated directory and disables automatic legacy migration. A custom task storage path can be selected in settings.
-
-Task data remains local unless you export it or explicitly submit text/images to your configured AI service. There is no telemetry, account system, cloud sync, or background AI submission. API keys are encrypted using Windows DPAPI for the current user; task exports do not include configuration or keys. Browser demonstration data is separate from desktop data.
-
-Reminders need TaskHarbor running. Exiting stops reminders; Windows notification settings may suppress their display. The host checks approximately every ten seconds, catches up at most the last 24 hours, and respects configured quiet hours. System notifications omit private task titles.
-
-## Repository layout
+### Repository layout
 
 ```text
-src/          C# WinForms host, storage, AI transport and desktop services
-web/          Local HTML/CSS UI, controller and independently tested domain model
-assets/       Application icon
-tests/        Domain, UI-controller and native tests with isolated fixtures
-scripts/      SDK restore, build, test, packaging and source audit
-docs/         User guide, development notes, verification and publishing guide
-examples/     Fictional sample task data (never personal application data)
-.github/      Windows CI and issue/pull-request templates
+TaskHarbor/
+├── src/             C# host, storage, AI transport and native services
+├── web/             Local UI, controller and independent task model
+├── assets/          Application icon
+├── tests/           Domain, controller and native checks
+├── scripts/         Restore, build, test, packaging and source audit
+├── docs/
+│   ├── images/      Bilingual README illustrations
+│   └── *.md         Guides, architecture and verification records
+├── examples/        Fictional sample tasks
+├── .github/         Windows CI and issue/pull-request templates
+├── Build.cmd        Build entry point
+├── README.zh-CN.md  Chinese documentation
+└── LICENSE          MIT License
 ```
 
-See [the verification report](docs/VERIFICATION.md) for what was actually tested and what still needs manual validation. Concept images are not presented as screenshots of the delivered app.
+`build/` and `dist/` are generated locally and ignored by Git.
 
-## Get the source
+## Verification and current limits
 
-```powershell
-git clone https://github.com/Crazyer-Flove/TaskHarbor.git
-cd TaskHarbor
-```
+| Verification | Recorded result |
+| --- | --- |
+| Domain/static checks | 39 passed |
+| UI-controller checks in a DOM test double | 13 passed |
+| Native C# checks with isolated fixtures | 34 passed |
+| Clean source restore/build and binary diagnostics | Passed in the recorded local environment |
+| Hosted Windows CI | [Initial source publication passed](https://github.com/Crazyer-Flove/TaskHarbor/actions/runs/40647826123); the badge shows the latest run |
+| Desktop visual, DPI, accessibility and multi-monitor acceptance | Still requires manual verification |
 
-Fork the repository to contribute or maintain your own version. See [GitHub publishing](docs/PUBLISHING.md) for source publishing and release packaging. Windows CI produces a downloadable build artifact; it does not automatically create a GitHub Release.
+The **86 automated checks** cover rules, failure recovery, recurrence, storage, migration and reminder timing. They do not establish that every desktop interaction or visual state has passed. See [the verification record](docs/VERIFICATION.md) and [design QA](design-qa.md).
 
-## License
+Current scope is a personal Windows application. There is no macOS/Linux build, English UI, account/cloud sync, team assignment, automatic updater or closed-app reminder scheduler. Real provider requests and final desktop behavior need environment-specific testing.
 
-TaskHarbor source code and first-party assets are distributed under the [MIT License](LICENSE). Microsoft WebView2 SDK/Runtime remain under their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md). The name is a product identifier for this project, not a claim of trademark registration or name exclusivity.
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| No panel after launching | Look for the edge handle or tray; try `Ctrl+Shift+T` if registered |
+| WebView2 initialization fails | Installed Runtime, Windows/.NET compatibility and a writable data directory |
+| Global shortcut does not work | Another app may own it; use the tray or edge handle |
+| A new task seems missing | Scope/search and the task's plan; switch to All or use the notice's “查看” action |
+| Changes fail to save | Storage path and write permissions; retry after correcting the cause |
+| Task data cannot be loaded | Preserve the original and restore a known backup; do not overwrite it with an empty export |
+| Reminders do not appear | Running app, task date, opt-in, quiet hours, snooze and Windows notification settings |
+| AI errors or incorrect proposals | URL, endpoint path, model capability and key; inspect the preview |
+| SDK restore cannot connect | Access to official NuGet, then rerun `scripts/restore.ps1` |
+| Actions download unavailable | Sign in, choose a successful run or build from source if artifacts expired |
+
+More information: [User guide](docs/USER_GUIDE.md) · [Development](docs/DEVELOPMENT.md) · [Publishing](docs/PUBLISHING.md) · [Security](SECURITY.md).
+
+## Contributing and license
+
+Open [a bug report or feature request](https://github.com/Crazyer-Flove/TaskHarbor/issues/new/choose), or fork and submit a pull request. Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing task schemas, window behavior or persistence. Include Windows/app versions and reproduction steps; use fictional/redacted tasks in screenshots.
+
+Source and first-party assets use the [MIT License](LICENSE). Microsoft WebView2 components retain their own terms; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The product name does not imply trademark registration or exclusive naming rights.
