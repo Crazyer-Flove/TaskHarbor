@@ -1,6 +1,26 @@
-# Verification — TaskHarbor 3.0.0
+# Verification — TaskHarbor
 
-Recorded on 2026-10-28 (Asia/Shanghai).
+## 3.0.3 — 2026-10-29 (Asia/Shanghai)
+
+- The idle handle uses the selected monitor's top-right working-area anchor with a DPI-scaled 24 logical-pixel inset, clamped for small screens. The expanded panel uses the same anchor.
+- Existing saved coordinates select the monitor but do not override the right alignment.
+- The 105-check regression suite and release-binary self-test passed; actual placement and animation remain subject to desktop/multi-monitor acceptance.
+
+## 3.0.2 — 2026-10-29 (Asia/Shanghai)
+
+- 105 checks passed: 39 domain/static, 13 UI-controller simulation and 53 native checks.
+- 11 new checks cover top-edge anchoring, negative monitor coordinates, small work areas, exact motion endpoints, clamping, monotonic easing and reversal continuity.
+- Motion retains a constant WebView size, translates its content and clips the host region on a 15 ms timer; no per-frame bitmap scaling or alpha-mode switching occurs.
+- This is numerical/policy verification, not a real desktop animation acceptance result. Frame pacing, rendered clipping, focus, dragging and multi-monitor/DPI behavior still require hands-on verification.
+
+## 3.0.1 — 2026-10-29 (Asia/Shanghai)
+
+- 94 automated checks passed: 39 domain/static, 13 simulated UI-controller and 42 native checks.
+- Eight new native checks cover transparent-corner hover entry, stationary-pointer suppression, exit/re-entry, manual-collapse rearming, held-button/drag suppression, release, the handle-to-panel gap and workspace exit.
+- The native host polls hover entry including alpha-zero pixels using the existing 110 ms timer. Mouse exit retains the configured delay and pin/edit/dialog/AI protections.
+- Geometry/state-policy tests do not verify real pointer movement or native window behavior. Interactive hover, multi-monitor/DPI transitions and drag positioning still require manual verification.
+
+## 3.0.0 baseline — 2026-10-28 (Asia/Shanghai)
 
 ## Completed
 

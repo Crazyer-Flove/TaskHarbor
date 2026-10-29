@@ -10,7 +10,7 @@
 
 TaskHarbor 是一款面向个人的 Windows 桌面任务工具，将四象限、日／周／月计划和桌面快速录入放进同一个工作空间。把重要的事留在眼前，随手记录临时任务，只为确实有期限的任务设置截止时间。
 
-**当前版本：3.0.0；应用操作界面为简体中文。** 英文 README 是同一款应用的英文说明，不代表已经提供英文操作界面。基础任务管理无需注册账号，也无需配置 AI。
+**当前版本：3.0.3；应用操作界面为简体中文。** 英文 README 是同一款应用的英文说明，不代表已经提供英文操作界面。基础任务管理无需注册账号，也无需配置 AI。
 
 ![TaskHarbor 工作台布局示意：四象限、计划筛选、底部录入和桌面工作流程](docs/images/overview-zh-CN.png)
 
@@ -75,7 +75,7 @@ EXE 内嵌的 WebView2 **SDK** 组件不能代替系统中的 **Runtime**。当�
 1. 打开 [Windows 构建与测试页面](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml)。
 2. 选择对应版本或提交的一次**成功运行**。
 3. 下载名为 **TaskHarbor-windows-x64** 的 Artifact。GitHub 下载 Actions 产物可能需要登录账号。
-4. 先解压产物，再解压其中的 `TaskHarbor-3.0.0-windows-x64.zip`，保留说明文档和许可文件。
+4. 先解压产物，再解压其中的 `TaskHarbor-3.0.3-windows-x64.zip`，保留说明文档和许可文件。
 5. 运行 `TaskHarbor.exe`，通过贴边把手、托盘或已注册的快捷键打开面板。
 
 当前工作流提供 Windows ZIP 与校验值，**不会自动创建 GitHub Release**。产物过期时可按下文步骤自行构建。
@@ -113,8 +113,9 @@ EXE 内嵌的 WebView2 **SDK** 组件不能代替系统中的 **Runtime**。当�
 ## 桌面使用与快捷键
 
 - 在同一窗口中切换“工作台”和“小面板”。
+- 鼠标移入透明把手区域即展开，无需点击；移出后按配置延迟收起。从把手移向面板时保持展开。若手动收起时鼠标还在把手内，先移出再移入才会再次展开。
 - 点击“固定”保持展开；自动收起可设为 1、3、5、10 秒，或仅手动。
-- 拖动标题栏移动面板；拖动把手调整贴边位置。
+- 收起与展开均贴在当前屏幕工作区上方，约 280 毫秒下滑展开、240 毫秒上滑收起；鼠标在自动收起时返回会从当前位置重新展开。静默把手固定在顶部靠右，距右边缘约 24 个逻辑像素；拖动可选择其他显示器，松手后回到该屏幕右上方。
 - 录入、编辑、确认和 AI 处理期间，面板保持展开。
 - 托盘提供打开面板、暂停提醒 1 小时和退出入口。
 
@@ -222,8 +223,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1
 | --- | --- |
 | `TaskHarbor.exe` | 内嵌 UI 与 SDK 组件的 Windows x64 程序 |
 | `release.json` | 版本、平台、体积、SDK 版本和 EXE 的 SHA-256 |
-| `TaskHarbor-3.0.0-windows-x64.zip` | EXE、清单、文档与许可 |
-| `TaskHarbor-3.0.0-source.zip` | 白名单内的源码、文档、资源和 GitHub 模板 |
+| `TaskHarbor-3.0.3-windows-x64.zip` | EXE、清单、文档与许可 |
+| `TaskHarbor-3.0.3-source.zip` | 白名单内的源码、文档、资源和 GitHub 模板 |
 | `SHA256SUMS.txt` | EXE 与两个 ZIP 的校验值 |
 
 源码包排除个人任务、配置、已恢复的依赖和运行缓存。源码 ZIP 可在本地生成；当前 CI Artifact 上传 Windows ZIP 与校验值。
@@ -267,12 +268,12 @@ TaskHarbor/
 | --- | --- |
 | 任务模型／静态检查 | 39 项通过 |
 | 基于模拟 DOM 的 UI 控制器检查 | 13 项通过 |
-| 独立测试数据的 C# 原生检查 | 34 项通过 |
+| 独立测试数据的 C# 原生检查 | 53 项通过 |
 | 干净源码恢复依赖、构建与实际 EXE 诊断 | 在已记录的本地环境通过 |
 | GitHub Windows CI | [首次源码发布已通过](https://github.com/Crazyer-Flove/TaskHarbor/actions/runs/40647826123)；最新状态见页首徽章 |
 | 桌面视觉、DPI、无障碍与多屏验收 | 仍需人工验证 |
 
-共 **86 项自动化检查**，覆盖任务规则、失败恢复、重复任务、存储、迁移与提醒时机。自动化通过不代表每种桌面交互和视觉状态都已验收。完整记录见 [VERIFICATION.md](docs/VERIFICATION.md) 和 [design-qa.md](design-qa.md)。
+共 **105 项自动化检查**，覆盖任务规则、失败恢复、重复任务、存储、迁移与提醒时机。自动化通过不代表每种桌面交互和视觉状态都已验收。完整记录见 [VERIFICATION.md](docs/VERIFICATION.md) 和 [design-qa.md](design-qa.md)。
 
 当前为个人 Windows 应用，尚无 macOS／Linux 版本、英文界面、账号／云同步、团队分派、自动更新器或关闭应用后的提醒调度。真实 AI 服务和最终桌面交互仍需在实际环境验证。
 

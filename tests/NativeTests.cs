@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Drawing;
 using System.Web.Script.Serialization;
 
 namespace TaskHarbor
@@ -20,6 +21,43 @@ namespace TaskHarbor
         }
         private static void Run()
         {
+            var screen = new Rectangle(-1920, -100, 1920, 1080);
+            var topHandle = TopPanelMotion.Handle(screen, -960, 68);
+            Check("handle stays on top edge with visible grip", topHandle.Top < screen.Top && topHandle.Bottom > screen.Top && topHandle.Bottom - screen.Top == 29);
+            Check("handle clamps horizontal position on negative monitor", TopPanelMotion.Handle(screen, -3000, 68).Left == screen.Left);
+            var topPanel = TopPanelMotion.Panel(screen, -960, 860, 780);
+            Check("expanded panel flush with monitor work area top", topPanel.Top == screen.Top && screen.Contains(topPanel));
+            Check("panel clamps at right monitor edge", TopPanelMotion.Panel(screen, 100, 860, 780).Right == screen.Right);
+            var small = new Rectangle(0, 40, 320, 240);
+            Check("small work area safely fits panel", TopPanelMotion.Panel(small, 160, 860, 780) == small);
+            Check("opening animation exact endpoints", TopPanelMotion.Reveal(0, 780, 0) == 0 && TopPanelMotion.Reveal(0, 780, 1) == 780);
+            Check("closing animation exact endpoints", TopPanelMotion.Reveal(780, 0, 0) == 780 && TopPanelMotion.Reveal(780, 0, 1) == 0);
+            Check("elapsed time clamps without overshoot", TopPanelMotion.Reveal(0, 780, -1) == 0 && TopPanelMotion.Reveal(780, 0, 2) == 0);
+            bool monotonic = true; int lastOpen = 0, lastClose = 780;
+            for (int i = 0; i <= 100; i++) {
+                int open = TopPanelMotion.Reveal(0, 780, i / 100.0), close = TopPanelMotion.Reveal(780, 0, i / 100.0);
+                if (open < lastOpen || close > lastClose || open > 780 || close < 0) monotonic = false;
+                lastOpen = open; lastClose = close;
+            }
+            Check("motion progresses monotonically in both directions", monotonic);
+            int reversed = TopPanelMotion.Reveal(780, 0, 0.4);
+            Check("reversing starts at current visible position", TopPanelMotion.Reveal(reversed, 780, 0) == reversed);
+            Check("cubic easing settles gently at endpoint", TopPanelMotion.Reveal(0, 1000, 0.25) > 250 && 1000 - TopPanelMotion.Reveal(0, 1000, 0.75) < 250);
+            var hover = new EdgeHoverState();
+            var handle = new Rectangle(100, 100, 68, 68);
+            var corner = new Point(101, 101);
+            Check("transparent handle corner opens without click", hover.ShouldExpand(handle, corner, true));
+            Check("stationary pointer does not toggle repeatedly", !hover.ShouldExpand(handle, corner, true));
+            hover.ShouldExpand(handle, new Point(90, 100), true);
+            Check("leaving and returning rearms hover", hover.ShouldExpand(handle, corner, true));
+            hover.Collapsed(handle, corner);
+            Check("manual collapse does not immediately reopen", !hover.ShouldExpand(handle, corner, true));
+            hover.ShouldExpand(handle, new Point(90, 100), true);
+            Check("held mouse button blocks expansion during drag", !hover.ShouldExpand(handle, corner, false));
+            Check("release allows hover without another click", hover.ShouldExpand(handle, corner, true));
+            var panel = new Rectangle(180, 100, 480, 680);
+            Check("handle to panel gap stays active", EdgeHoverState.InWorkspace(panel, handle, new Point(174, 130)));
+            Check("outside workspace is eligible for collapse", !EdgeHoverState.InWorkspace(panel, handle, new Point(99, 130)));
             Store.Initialize(Dir("primary"));
             string first = "[{\"id\":\"t1\",\"title\":\"Task\",\"period\":\"week\",\"planDate\":\"2026-10-26\",\"date\":\"\",\"subtasks\":[{\"title\":\"Step\",\"done\":false}]}]";
             Check("task data roundtrip including subtasks and empty deadline", Store.SaveTasks(first) && Store.LoadTasks() == first);

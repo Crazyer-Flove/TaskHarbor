@@ -1,12 +1,60 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Drawing;
 using System.IO;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace TaskHarbor
 {
+    internal static class TopPanelMotion
+    {
+        public static int RightAnchor(Rectangle area, int size, int inset)
+        {
+            size = Math.Max(1, Math.Min(size, Math.Min(area.Width, area.Height)));
+            inset = Math.Max(0, Math.Min(inset, area.Width - size));
+            return area.Right - inset - size + size / 2;
+        }
+        public static Rectangle Handle(Rectangle area, int anchorX, int size)
+        {
+            size = Math.Max(1, Math.Min(size, Math.Min(area.Width, area.Height)));
+            int visible = Math.Max(1, (int)Math.Round(size * 0.42));
+            int x = Math.Max(area.Left, Math.Min(anchorX - size / 2, area.Right - size));
+            return new Rectangle(x, area.Top - size + visible, size, size);
+        }
+        public static Rectangle Panel(Rectangle area, int anchorX, int width, int height)
+        {
+            width = Math.Max(1, Math.Min(width, area.Width));
+            height = Math.Max(1, Math.Min(height, area.Height));
+            return new Rectangle(Math.Max(area.Left, Math.Min(anchorX - width / 2, area.Right - width)), area.Top, width, height);
+        }
+        public static int Reveal(int from, int to, double progress)
+        {
+            double t = Math.Max(0, Math.Min(1, progress));
+            double eased = 1 - Math.Pow(1 - t, 3);
+            return (int)Math.Round(from + (to - from) * eased);
+        }
+    }
+
+    // Cursor polling includes alpha-zero pixels, which do not receive native mouse events.
+    internal sealed class EdgeHoverState
+    {
+        private bool _armed = true;
+        public bool ShouldExpand(Rectangle bounds, Point pointer, bool allowed)
+        {
+            if (!bounds.Contains(pointer)) { _armed = true; return false; }
+            if (!allowed || !_armed) return false;
+            _armed = false;
+            return true;
+        }
+        public void Collapsed(Rectangle bounds, Point pointer) { _armed = !bounds.Contains(pointer); }
+        public static bool InWorkspace(Rectangle panel, Rectangle handle, Point pointer)
+        {
+            return (handle.IsEmpty ? panel : Rectangle.Union(panel, handle)).Contains(pointer);
+        }
+    }
+
     // The host timer works while the WebView is hidden. No task titles in system notifications.
     internal sealed class DesktopServices : IDisposable
     {

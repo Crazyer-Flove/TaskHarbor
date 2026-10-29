@@ -10,7 +10,7 @@
 
 TaskHarbor brings an Eisenhower matrix, day/week/month planning and quick desktop capture into one personal workspace. Keep important work visible, collect small tasks without losing context, and give a task a deadline only when it actually has one.
 
-**Current version: 3.0.0. The application interface is Simplified Chinese.** This English README documents the same application; an English interface is not currently implemented. Core task management works locally without an account or AI configuration.
+**Current version: 3.0.3. The application interface is Simplified Chinese.** This English README documents the same application; an English interface is not currently implemented. Core task management works locally without an account or AI configuration.
 
 ![TaskHarbor workbench illustration with four priority quadrants, planning filters and quick entry](docs/images/overview-en.png)
 
@@ -75,7 +75,7 @@ The embedded WebView2 **SDK** wrappers do not replace the installed **Runtime**.
 1. Open [Windows build and test](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml).
 2. Select a successful run for the version or commit you want.
 3. Download the **TaskHarbor-windows-x64** artifact. GitHub may require sign-in for Actions downloads.
-4. Extract the artifact, then extract its `TaskHarbor-3.0.0-windows-x64.zip`. Keep the accompanying notices and documentation.
+4. Extract the artifact, then extract its `TaskHarbor-3.0.3-windows-x64.zip`. Keep the accompanying notices and documentation.
 5. Run `TaskHarbor.exe`. Use the edge handle, tray or registered capture shortcut to open the panel.
 
 The workflow uploads a Windows ZIP and checksums. It does **not** automatically publish a GitHub Release. If an artifact has expired, build from source below.
@@ -113,8 +113,9 @@ Calendar calculations use local dates; weeks start on **Monday**. Statistics use
 ## Desktop workflow and shortcuts
 
 - Switch between **工作台** (workbench) and **小面板** (compact panel) in the same window.
+- Hover over the transparent edge-handle area to expand without clicking. Move away to collapse after the configured delay; moving across the handle-to-panel gap keeps it open. After manually collapsing while over the handle, leave and re-enter to reopen.
 - Pin the panel to keep it open. Auto-collapse offers a 1, 3, 5 or 10 second delay, or manual-only mode.
-- Drag the title bar to move the panel; drag the edge handle to reposition it along the screen edge.
+- Both layouts dock to the top working-area edge. Hover to slide down (about 280 ms); leave to slide up (about 240 ms) after the configured delay. Returning during automatic closing reverses it smoothly. The idle handle sits near the top-right corner with a 24 logical-pixel right inset. Dragging can select another monitor; the handle returns to its top-right anchor.
 - Entry, editing, confirmations and AI processing keep the panel expanded while work is in progress.
 - The tray can open a layout, pause reminders for one hour or exit the application.
 
@@ -220,8 +221,8 @@ For a build only, double-click `Build.cmd`. The first restore downloads pinned *
 | --- | --- |
 | `TaskHarbor.exe` | Windows x64 app with embedded UI and SDK wrappers |
 | `release.json` | Version, platform, size, SDK version and executable SHA-256 |
-| `TaskHarbor-3.0.0-windows-x64.zip` | Executable, manifest, documentation and notices |
-| `TaskHarbor-3.0.0-source.zip` | Allowlisted source, documentation, assets and GitHub templates |
+| `TaskHarbor-3.0.3-windows-x64.zip` | Executable, manifest, documentation and notices |
+| `TaskHarbor-3.0.3-source.zip` | Allowlisted source, documentation, assets and GitHub templates |
 | `SHA256SUMS.txt` | Checksums for the executable and both ZIPs |
 
 The source archive excludes personal data, configuration, restored dependencies and runtime profiles. The source ZIP is generated locally; current CI uploads the Windows ZIP and checksums.
@@ -265,12 +266,12 @@ TaskHarbor/
 | --- | --- |
 | Domain/static checks | 39 passed |
 | UI-controller checks in a DOM test double | 13 passed |
-| Native C# checks with isolated fixtures | 34 passed |
+| Native C# checks with isolated fixtures | 53 passed |
 | Clean source restore/build and binary diagnostics | Passed in the recorded local environment |
 | Hosted Windows CI | [Initial source publication passed](https://github.com/Crazyer-Flove/TaskHarbor/actions/runs/40647826123); the badge shows the latest run |
 | Desktop visual, DPI, accessibility and multi-monitor acceptance | Still requires manual verification |
 
-The **86 automated checks** cover rules, failure recovery, recurrence, storage, migration and reminder timing. They do not establish that every desktop interaction or visual state has passed. See [the verification record](docs/VERIFICATION.md) and [design QA](design-qa.md).
+The **105 automated checks** cover rules, failure recovery, recurrence, storage, migration and reminder timing. They do not establish that every desktop interaction or visual state has passed. See [the verification record](docs/VERIFICATION.md) and [design QA](design-qa.md).
 
 Current scope is a personal Windows application. There is no macOS/Linux build, English UI, account/cloud sync, team assignment, automatic updater or closed-app reminder scheduler. Real provider requests and final desktop behavior need environment-specific testing.
 

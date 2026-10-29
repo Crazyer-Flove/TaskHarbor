@@ -149,7 +149,7 @@
       return {
         tasks: JSON.stringify(previewTasks),
         cfg: JSON.stringify(previewCfg),
-        version: "3.0.0 preview",
+        version: "3.0.3 preview",
         dataPath: "浏览器演示数据（与桌面数据隔离）",
         demo: true,
         hotkey: false,
@@ -1138,7 +1138,7 @@
     $("settingCustomPrompt").checked = !!c.customPrompt;
     $("settingPrompt").value = c.prompt || "";
     $("dataPath").textContent = c.dataPath || "";
-    $("version").textContent = "TaskHarbor " + (c.version || "3.0.0");
+    $("version").textContent = "TaskHarbor " + (c.version || "3.0.3");
     $("hotkeyStatus").textContent = c.hotkey
       ? "全局快捷键 Ctrl + Shift + T"
       : "全局快捷键 Ctrl + Shift + T 暂不可用，可从托盘打开";

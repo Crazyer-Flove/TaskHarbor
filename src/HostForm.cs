@@ -1,43 +1,7 @@
-﻿// ============================================================
-//  主窗口：贴边一小截 ←→ 展开面板
-//  承载 WebView2（Chromium 内核），与网页双向通信
-//
-//  交互约定（v1.7）
-//   · 贴边一小截（唯一的「收起」形态）：单击 → 面板从贴着的那一边展开
-//   · 贴边一小截：按住拖动 → 移动位置，松手后就近重新贴边
-//   · 面板：1 秒无操作 → 自动收起成贴边一小截（一步到位，无动画）
-//   · 面板：拖标题栏 → 移动面板（拖完不自动贴边）
-//   · 增删改任务：响一声提示音（音色在设置里选，见 Sound.cs）
-//
-//  ⚠ v1.7：删掉了「完整悬浮球」这一态
-//  ------------------------------------------------------------------
-//  以前是三态：完整悬浮球 ←→ 贴边一小截 ←→ 面板，「球 → 面板」之间有一段
-//  13 帧的缩放大动画。那段动画是「淡色残影」的根源：逐像素位图和 WebView2
-//  合成层在动画期间交替生效，任何一帧没对上就会在屏幕上留下痕迹。
-//  现在只剩两态、且两态之间【直接切换、没有中间帧】，成因从根上消失了。
-//  连带删掉的：AnimTick / EaseOut / Undock / CursorNearDocked /
-//  CursorNearScreenEdge / _recentUndock / _pendingDock / NEAR_PAD /
-//  以及动画用的 _from.._toA / ANIM_STEPS。
-//
-//  ⚠ 窗口的两种渲染方式，别搞混
-//  ------------------------------------------------------------------
-//  · 贴边态：隐藏 WebView2，用 Native.PaintBall 逐像素透明自己画。
-//    只有这样圆边才能抗锯齿（窗口 Region 是 1 位掩码，永远有台阶）。
-//    代价是网页收不到鼠标事件了，所以按下/右键菜单要在宿主里自己处理。
-//  · 面板态：显示 WebView2，用 Region 裁形状 + LWA_ALPHA 管透明度。
-//    面板圆角仍然是 Region 裁的（WebView2 是子窗口，没法参与父窗口的
-//    逐像素合成），但圆角只有 16px，台阶不明显。
-//  · 任何一步绘制失败都必须自动退回第二套，绝不能出现「窗口不见了」。
-//
-//  ⚠⚠ 铁律：逐像素模式（_pixelBall）下，一次都不能调 SetLayeredWindowAttributes
-//      一旦调过，UpdateLayeredWindow 就永久失效（返回 0），而且不可逆。
-//      失效后的两个症状就是用户报过的那两个：
-//        · 贴边那一小截变成一个方块（窗口退回「自己那块底色」）
-//        · 面板底色里透出淡色圆（旧位图被 DWM 随窗口尺寸拉伸）
-//      所以 alpha 只能用 RepaintBall(alpha) 烘进位图，两条路径互不交叉。
-//      （历史坑：v1.4 的 AnimTick 每帧无条件调 SetAlpha，吸附滑动时必然中招。
-//        那段代码 v1.7 已删除，但铁律依然有效 —— 只要还有逐像素绘制。）
-// ============================================================
+﻿// TaskHarbor: top-anchored hover workspace with a constant-size WebView viewport.
+// The native timer translates WebView content and reveals its rounded window region.
+// Never resize/scale a ULW handle bitmap during motion. Switch rendering mode only at
+// transition boundaries; never call SetAlpha while _pixelBall is true (see Native.cs).
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -99,6 +63,13 @@ namespace TaskHarbor
         private Point _anchor;          // 球心（贴边锚点）
         private PointF _anchorOffset;   // 面板左上角 → 锚点的偏移（拖动面板时用）
         private long _lastActive;       // 最后一次「有操作」的时刻
+        private readonly EdgeHoverState _edgeHover = new EdgeHoverState();
+        private Rectangle _hoverHandleBounds;
+        private readonly Timer _slide = new Timer();
+        private bool _sliding, _slideOpening, _slideAutomatic;
+        private int _slideFrom, _slideTo, _slideVisible;
+        private long _slideStarted;
+        private double _slideDuration;
 
 
         private readonly Timer _watch = new Timer();
@@ -107,8 +78,6 @@ namespace TaskHarbor
         // 再藏（见 EnterPixelBall）。这样切换的瞬间不会闪一下网页画的球。
         private readonly Timer _wvHide = new Timer();
 
-        // ⚠ v1.7：动画相关成员（_anim / ANIM_STEPS / _from.._toA / _animT）已全部删除。
-        //   两个形态之间直接切换，不再有插值动画 —— 详见 Expand/Collapse 的注释。
 
         private Region _region;
         private Dictionary<string, object> _cfg;
@@ -146,7 +115,7 @@ namespace TaskHarbor
             this.KeyPreview = true;
 
             Rectangle wa = Screen.PrimaryScreen.WorkingArea;
-            _anchor = new Point(wa.Right - _ballSize, wa.Bottom - _ballSize);
+            _anchor = new Point(TopPanelMotion.RightAnchor(wa, _ballSize, (int)Math.Round(24 * _scale)), wa.Top + _ballSize / 2);
             _lastActive = Now;
 
             _wv = new WebView2();
@@ -157,6 +126,8 @@ namespace TaskHarbor
             _wvHide.Tick += new EventHandler(WvHideTick);
             _watch.Interval = 110;
             _watch.Tick += new EventHandler(WatchTick);
+            _slide.Interval = 15;
+            _slide.Tick += new EventHandler(SlideTick);
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
         }
 
@@ -166,7 +137,7 @@ namespace TaskHarbor
             try { BeginInvoke(new Action(delegate {
                 if (IsDisposed || !_ready) return;
                 ClampAnchor();
-                if (_expanded) ApplyBounds(PanelRectFromDock(""), _panelRadius);
+                if (_expanded) { FinishSlideOpen(); ApplyBounds(PanelRectFromDock("top"), _panelRadius); }
                 else ApplyBallBounds(false);
                 SaveAnchor();
             })); } catch { }
@@ -257,7 +228,7 @@ namespace TaskHarbor
             if (_cfg == null) _cfg = Store.LoadConfig();
             _cfg["layout"] = layout == "compact" ? "compact" : "workbench";
             if (!Store.SaveConfig(_cfg)) throw new IOException("窗口偏好未能保存");
-            if (_expanded) ApplyBounds(PanelRectFromDock(""), _panelRadius);
+            if (_expanded) { FinishSlideOpen(); ApplyBounds(PanelRectFromDock("top"), _panelRadius); }
             Emit("{\"evt\":\"layout\",\"layout\":" + Q(_cfg["layout"].ToString()) + "}");
         }
 
@@ -598,7 +569,7 @@ namespace TaskHarbor
                     Reply(id, "\"ok\":true");
                     break;
 
-                // 悬浮球按下：走系统拖动；松手后如果几乎没动，就当成「单击 → 展开面板」
+                // 把手按下仅用于拖动；展开由鼠标进入透明区域触发。
                 // （逐像素绘制模式下网页收不到鼠标事件，同样的逻辑由 OnMouseDown 走这里）
                 case "ballDown":
                     HandleBallPress();
@@ -911,6 +882,7 @@ namespace TaskHarbor
         // ---------------- 拖动（面板标题栏） ----------------
         private void DoDragWindow()
         {
+            if (_sliding) FinishSlideOpen();
             _suppressHide = true;
             _dragging = true;
             try
@@ -923,13 +895,13 @@ namespace TaskHarbor
                 _suppressHide = false;
             }
             _lastActive = Now;
-            // 拖动结束后更新锚点。
-            // v1.7：面板拖动结束后【不再自动贴边】—— 面板拖到哪就留在哪，
-            // 用户想让它回边上就等 1 秒无操作自动收（收起时才吸附）。
+            // Dragging selects the monitor/horizontal anchor; always return to its top edge.
             if (_expanded)
             {
                 _anchor = new Point(this.Left + (int)_anchorOffset.X, this.Top + (int)_anchorOffset.Y);
                 ClampAnchor();
+                ApplyBounds(PanelRectFromDock("top"), _panelRadius);
+                _hoverHandleBounds = DockRect(out _dockSide);
                 SaveAnchor();
             }
         }
@@ -973,13 +945,9 @@ namespace TaskHarbor
             _lastActive = Now;
             int moved = Math.Abs(this.Left - before.X) + Math.Abs(this.Top - before.Y);
 
-            if (moved <= (int)(CLICK_SLOP * _scale))
+            if (moved > (int)(CLICK_SLOP * _scale))
             {
-                Expand();                     // 几乎没动 = 单击 → 直接从贴的那一边展开
-            }
-            else
-            {
-                // 拖动结束：更新锚点，然后重新贴到最近的边。
+                // 拖动结束：更新显示器和横向锚点，再返回顶部。
                 // 取拖完之后的窗口中心当新锚点（贴边时中心其实在屏幕外，
                 // 但 DockRect 只用它判断「离哪条边近」，在屏幕外正是我们想要的信息）。
                 _anchor = new Point(this.Left + this.Width / 2, this.Top + this.Height / 2);
@@ -1261,47 +1229,13 @@ namespace TaskHarbor
             return new Rectangle(x, y, _ballSize, _ballSize);
         }
 
-        /// <summary>吸附位置：贴到最近的屏幕边，只露出 DOCK_VIS 比例的球体。</summary>
+        /// <summary>顶部收起位置：只露出透明把手的下方区域。</summary>
         private Rectangle DockRect(out string side)
         {
-            Rectangle wa = CurrentWorkArea;
-            Rectangle b = BallRect();
-            int vis = (int)Math.Round(_ballSize * DOCK_VIS);
-            if (vis < 12) vis = 12;
-
-            int cx = b.Left + _ballSize / 2;
-            int cy = b.Top + _ballSize / 2;
-            int dl = cx - wa.Left;
-            int dr = wa.Right - cx;
-            int dt = cy - wa.Top;
-            int db = wa.Bottom - cy;
-            int m = Math.Min(Math.Min(dl, dr), Math.Min(dt, db));
-
-            if (m == dl)
-            {
-                side = "left";
-                return new Rectangle(wa.Left - (_ballSize - vis),
-                                     ClampInt(cy - _ballSize / 2, wa.Top, wa.Bottom - _ballSize),
-                                     _ballSize, _ballSize);
-            }
-            if (m == dr)
-            {
-                side = "right";
-                return new Rectangle(wa.Right - vis,
-                                     ClampInt(cy - _ballSize / 2, wa.Top, wa.Bottom - _ballSize),
-                                     _ballSize, _ballSize);
-            }
-            if (m == dt)
-            {
-                side = "top";
-                return new Rectangle(ClampInt(cx - _ballSize / 2, wa.Left, wa.Right - _ballSize),
-                                     wa.Top - (_ballSize - vis),
-                                     _ballSize, _ballSize);
-            }
-            side = "bottom";
-            return new Rectangle(ClampInt(cx - _ballSize / 2, wa.Left, wa.Right - _ballSize),
-                                 wa.Bottom - vis,
-                                 _ballSize, _ballSize);
+            side = "top";
+            Rectangle area = CurrentWorkArea;
+            return TopPanelMotion.Handle(area,
+                TopPanelMotion.RightAnchor(area, _ballSize, (int)Math.Round(24 * _scale)), _ballSize);
         }
 
         private static int ClampInt(int v, int lo, int hi)
@@ -1312,9 +1246,9 @@ namespace TaskHarbor
 
         // ⚠ v1.7 删除：CursorNearDocked / Undock / PanelRect(out offset)
         //   · 贴边态不再「鼠标靠近就弹回完整悬浮球」（球这一态已删）——
-        //     展开只由单击触发，所以不需要近距离检测。
+        //     现在检测整个把手矩形（含透明像素）悬停，直接展开工作区。
         //   · 面板位置改由 PanelRectFromDock(side) 按「贴的那一边」算。
-        //   · 面板拖动后不再自动贴边（见 DoDragWindow）。
+        //   · 面板拖动后保持横向位置并返回顶部（见 DoDragWindow）。
 
         private void ApplyBounds(Rectangle r, int radius)
         {
@@ -1353,65 +1287,110 @@ namespace TaskHarbor
             base.OnKeyDown(e);
         }
 
-        // ---------------- 状态切换（v1.7：只有两态，没有动画） ----------------
-        //
-        //  v1.7 把「完整悬浮球」这一态整个删掉了 —— 现在只有两个形态：
-        //    ① 贴边一小截（唯一的「收起」形态）
-        //    ② 面板
-        //  两个形态之间【直接切】，中间不存在缩放/位移的过渡帧。
-        //
-        //  为什么删：以前「球 → 面板」是一段 13 帧的缩放大动画（AnimTick 每帧改
-        //  窗口尺寸 + alpha）。那段动画正是「淡色残影」的来源 —— 逐像素模式的位图
-        //  和 WebView2 的合成层在动画期间交替生效，任何一帧没对上就留下痕迹。
-        //  砍掉动画之后，这两类问题的成因（连续多帧的中间态）从根上消失了。
-
-        /// <summary>贴边一小截 → 面板。直接从贴的那一边长出来，无动画。</summary>
+        // Top-edge motion reveals a fixed-size WebView. ULW handle rendering and
+        // panel alpha rendering switch only once at each transition boundary.
         private void Expand()
         {
-            if (_expanded || !_ready) return;
-
-            // 记下从哪一边展开的（面板要贴着那一边）
-            string side = _dockSide;
-
+            if (!_ready) return;
+            if (_sliding) { if (!_slideOpening) BeginSlide(true, false); return; }
+            if (_expanded) return;
+            _hoverHandleBounds = DockRect(out _dockSide);
             _expanded = true;
             _docked = false;
             _dockSide = "";
             _lastActive = Now;
-
-            // ① 先退出逐像素模式：面板要靠 WebView2 渲染。
-            //    这一步内部会把分层表面擦干净（ClearLayeredSafe），
-            //    顺序不能省 —— 否则那张贴边位图会粘在面板底下透出来。
+            // Switch ULW/SLWA once, outside the animation; never scale the native bitmap.
             ExitPixelBall();
-
-            // ② 直接落到面板几何。不插值、不抖动，一步到位。
-            Rectangle p = PanelRectFromDock(side);
-            ApplyBounds(p, _panelRadius);
-            Native.SetAlpha(this.Handle, 255);      // 面板始终不透明
-
-            try { this.Cursor = Cursors.Default; } catch { }
+            Rectangle panel = PanelRectFromDock("top");
+            _wv.Dock = DockStyle.None;
+            _wv.SetBounds(0, -panel.Height, panel.Width, panel.Height);
+            ApplyBounds(panel, _panelRadius);
+            Native.SetAlpha(this.Handle, 255);
+            _slideVisible = 0;
             EmitMode();
-            try { this.Activate(); } catch { }
-            try { this.BringToFront(); } catch { }
+            BeginSlide(true, false);
+            try { this.Activate(); this.BringToFront(); } catch { }
         }
 
-        /// <summary>面板 → 贴边一小截。直接切回去，无动画。</summary>
-        private void Collapse()
+        private void Collapse() { Collapse(false); }
+        private void Collapse(bool automatic)
         {
-            if (!_expanded) return;
+            if (!_expanded || (_sliding && !_slideOpening)) return;
+            BeginSlide(false, automatic);
+        }
+
+        private void BeginSlide(bool opening, bool automatic)
+        {
+            _slide.Stop();
+            if (!_sliding) _slideVisible = opening ? 0 : this.Height;
+            _sliding = true;
+            _slideOpening = opening;
+            _slideAutomatic = automatic;
+            _slideFrom = _slideVisible;
+            _slideTo = opening ? this.Height : 0;
+            _slideStarted = Now;
+            _slideDuration = Math.Max(90, (opening ? 280.0 : 240.0) * Math.Abs(_slideTo - _slideFrom) / Math.Max(1, this.Height));
+            _wv.Dock = DockStyle.None;
+            // Constant viewport size throughout: only content position and the reveal region change.
+            _wv.Size = this.ClientSize;
+            SetSlideFrame(_slideVisible);
+            _slide.Start();
+        }
+
+        private void SetSlideFrame(int visible)
+        {
+            _slideVisible = Math.Max(0, Math.Min(this.Height, visible));
+            _wv.Location = new Point(0, _slideVisible - this.Height);
+            if (_slideVisible > 0)
+                Native.ApplyRegion(this, this.Width, _slideVisible, _panelRadius, ref _region);
+            else
+            {
+                Region old = _region;
+                _region = new Region(Rectangle.Empty);
+                this.Region = _region;
+                if (old != null) old.Dispose();
+            }
+        }
+
+        private void SlideTick(object sender, EventArgs e)
+        {
+            if (!_slideOpening && _slideAutomatic &&
+                (_pinned || _interacting || _suppressHide || _job != null ||
+                 new Rectangle(this.Left, this.Top, this.Width, _slideVisible).Contains(Cursor.Position) ||
+                 _hoverHandleBounds.Contains(Cursor.Position)))
+            { BeginSlide(true, false); return; }
+            double t = (Now - _slideStarted) / _slideDuration;
+            SetSlideFrame(TopPanelMotion.Reveal(_slideFrom, _slideTo, t));
+            if (t < 1) return;
+            if (_slideOpening) FinishSlideOpen();
+            else FinishSlideClosed();
+        }
+
+        private void FinishSlideOpen()
+        {
+            _slide.Stop();
+            _sliding = false;
+            _wv.Location = Point.Empty;
+            _wv.Dock = DockStyle.Fill;
+            Native.ApplyRegion(this, this.Width, this.Height, _panelRadius, ref _region);
+            _slideVisible = this.Height;
+            _lastActive = Now;
+        }
+
+        private void FinishSlideClosed()
+        {
+            _slide.Stop();
+            _sliding = false;
+            _wv.Visible = false;
+            _wv.Dock = DockStyle.Fill;
             _expanded = false;
             _lastActive = Now;
-
-            // 直接吸附：把窗口摆到贴边几何，然后进逐像素模式画握柄。
-            // ⚠ 这里【不要】调 Native.SetAlpha —— 紧跟着的 EnterPixelBall 会
-            //    摘掉重装 WS_EX_LAYERED（从而重置 SLWA/ULW 的互斥锁），
-            //    那次 SetAlpha 等于白调；而且它会让人误以为「alpha 走的是 SLWA」。
-            //    贴边态的不透明度是 PaintBall 烘进位图里的（见 RepaintBall）。
-            Rectangle r = DockRect(out _dockSide);
+            Rectangle handle = DockRect(out _dockSide);
             _docked = true;
-            ApplyBounds(r, _ballSize);
+            ApplyBounds(handle, _ballSize);
+            _edgeHover.Collapsed(this.Bounds, Cursor.Position);
             EnterPixelBall();
             if (_pixelBall) RepaintBall();
-
             EmitMode();
         }
 
@@ -1431,7 +1410,7 @@ namespace TaskHarbor
             EmitMode();
         }
 
-        /// <summary>拖动结束后重新贴边：位置变了，握柄朝哪边也可能变。</summary>
+        /// <summary>拖动结束后返回所选显示器顶部，保留横向位置。</summary>
         private void Redock()
         {
             if (!_ready || _expanded) return;
@@ -1447,37 +1426,22 @@ namespace TaskHarbor
         }
 
         /// <summary>
-        /// 以「贴边的那一边」为准算面板位置：面板从贴边处往里长，并夹在屏幕内。
-        /// v1.7 起不再以球心为中心展开 —— 贴左边就从左边弹出来。
+        /// Expanded bounds stay flush with the current monitor working-area top.
+        /// Clamp width/height and horizontal anchor to that monitor.
         /// </summary>
         private Rectangle PanelRectFromDock(string side)
         {
             Rectangle wa = CurrentWorkArea;
-            int gap = (int)Math.Round(12 * _scale);      // 和屏幕边留一点缝
             bool compact = CS("layout", "workbench") == "compact";
-            _panelW = Math.Min((int)Math.Round((compact ? 480 : PANEL_W) * _scale), Math.Max(1, wa.Width - gap * 2));
-            _panelH = Math.Min((int)Math.Round((compact ? 680 : PANEL_H) * _scale), Math.Max(1, wa.Height - gap * 2));
-
-            int x, y;
-            if (side == "left")  x = wa.Left + gap;
-            else if (side == "right") x = wa.Right - _panelW - gap;
-            else x = _anchor.X - _panelW / 2;
-
-            if (side == "top")   y = wa.Top + gap;
-            else if (side == "bottom") y = wa.Bottom - _panelH - gap;
-            else y = _anchor.Y - _panelH / 2;
-
-            x = ClampInt(x, wa.Left, wa.Right - _panelW);
-            y = ClampInt(y, wa.Top, wa.Bottom - _panelH);
-            _anchorOffset = new PointF(_panelW / 2f, _panelH / 2f);
-            return new Rectangle(x, y, _panelW, _panelH);
+            int anchorX = TopPanelMotion.RightAnchor(wa, _ballSize, (int)Math.Round(24 * _scale));
+            Rectangle panel = TopPanelMotion.Panel(wa, anchorX,
+                (int)Math.Round((compact ? 480 : PANEL_W) * _scale),
+                (int)Math.Round((compact ? 680 : PANEL_H) * _scale));
+            _panelW = panel.Width;
+            _panelH = panel.Height;
+            _anchorOffset = new PointF(anchorX - panel.Left, Math.Min(_ballSize / 2f, panel.Height / 2f));
+            return panel;
         }
-
-        // ⚠ v1.7：EaseOut / AnimTick 整段已删除。
-        //   那 13 帧的缩放插值动画是「淡色残影」的根源（逐像素位图与 WebView2
-        //   合成层在动画期间交替生效）。现在两个形态之间直接切换，没有中间帧。
-        //   如果将来需要重新引入动画，务必先读 Native.cs 的「经验四」和本文
-        //   文件头的铁律：逐像素模式下不能碰 SetLayeredWindowAttributes。
 
         // ---------------- 鼠标守望 ----------------
         private static long Now
@@ -1491,7 +1455,17 @@ namespace TaskHarbor
             if (!_ready || _dragging) return;
 
             Point p = Cursor.Position;
-            bool inside = this.Bounds.Contains(p);
+            if (_sliding)
+            {
+                if (!_slideOpening && _slideAutomatic &&
+                    (new Rectangle(this.Left, this.Top, this.Width, _slideVisible).Contains(p) ||
+                     _hoverHandleBounds.Contains(p) || _pinned || _interacting || _suppressHide || _job != null))
+                    BeginSlide(true, false);
+                return;
+            }
+            bool inside = _expanded
+                ? EdgeHoverState.InWorkspace(this.Bounds, _hoverHandleBounds, p)
+                : this.Bounds.Contains(p);
 
             if (_menuOpen)
             {
@@ -1500,12 +1474,12 @@ namespace TaskHarbor
                 return;
             }
 
-            // ---- 贴边态：这是 v1.7 唯一的「收起」形态，就在这里等着被点 ----
-            // 不再有「鼠标靠近 → 弹回完整悬浮球」这一步（球这一态已经删了）。
-            // 展开只由 OnMouseDown 的单击触发，鼠标靠近本身不做事。
+            // 包括透明像素在内的整个把手窗口都是悬停区域，不依赖点击或命中测试。
             if (_docked)
             {
-                _lastActive = Now;      // 贴边态永远不「超时」，它本身就是稳态
+                _lastActive = Now;
+                if (_edgeHover.ShouldExpand(this.Bounds, p,
+                    !_suppressHide && Control.MouseButtons == MouseButtons.None)) Expand();
                 return;
             }
 
@@ -1518,7 +1492,7 @@ namespace TaskHarbor
                 if (inside) return;
                 int delay;
                 if (!int.TryParse(CS("idleDelay", "1000"), out delay)) delay = IDLE_MS;
-                if (delay > 0 && Now - _lastActive > Math.Max(1000, Math.Min(60000, delay))) Collapse();
+                if (delay > 0 && Now - _lastActive > Math.Max(1000, Math.Min(60000, delay))) Collapse(true);
                 return;
             }
 
@@ -1527,10 +1501,7 @@ namespace TaskHarbor
             if (Now - _lastActive > IDLE_MS) DockNow();
         }
 
-        // ⚠ v1.7 删除：CursorNearScreenEdge
-        //   它原本是给「弹回球后防止立刻又被吸走」的抖动保护用的（_recentUndock）。
-        //   现在没有「弹回球」这一步了：贴边态是稳定状态，只有单击才会离开它，
-        //   所以那套防抖逻辑连同标志位一起删掉。
+        // 手动收起时若鼠标仍在把手内，先移出再移入才展开，避免立即弹回。
 
         protected override void Dispose(bool disposing)
         {
@@ -1539,8 +1510,8 @@ namespace TaskHarbor
                 if (_hotkeyRegistered) { UnregisterHotKey(this.Handle, 0x5448); _hotkeyRegistered = false; }
                 if (_desktop != null) { _desktop.Dispose(); _desktop = null; }
                 Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= DisplaySettingsChanged;
-                _watch.Stop(); _wvHide.Stop();
-                _watch.Dispose(); _wvHide.Dispose();
+                _watch.Stop(); _wvHide.Stop(); _slide.Stop();
+                _watch.Dispose(); _wvHide.Dispose(); _slide.Dispose();
                 if (_region != null) { try { _region.Dispose(); } catch { } }
                 if (_ballMenu != null) { try { _ballMenu.Dispose(); } catch { } }
             }

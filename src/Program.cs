@@ -15,8 +15,8 @@ using System.Windows.Forms;
 [assembly: System.Reflection.AssemblyTitle("TaskHarbor")]
 [assembly: System.Reflection.AssemblyProduct("TaskHarbor")]
 [assembly: System.Reflection.AssemblyDescription("A local-first Eisenhower task workspace")]
-[assembly: System.Reflection.AssemblyVersion("3.0.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("3.0.0.0")]
+[assembly: System.Reflection.AssemblyVersion("3.0.3.0")]
+[assembly: System.Reflection.AssemblyFileVersion("3.0.3.0")]
 [assembly: System.Runtime.Versioning.TargetFramework(
     ".NETFramework,Version=v4.6.2",
     FrameworkDisplayName = ".NET Framework 4.6.2")]
