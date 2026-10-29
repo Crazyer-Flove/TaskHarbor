@@ -72,13 +72,13 @@ EXE 内嵌的 WebView2 **SDK** 组件不能代替系统中的 **Runtime**。当�
 
 ### 下载 Windows 构建产物
 
-1. 打开 [Windows 构建与测试页面](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml)。
-2. 选择对应版本或提交的一次**成功运行**。
-3. 下载名为 **TaskHarbor-windows-x64** 的 Artifact。GitHub 下载 Actions 产物可能需要登录账号。
-4. 先解压产物，再解压其中的 `TaskHarbor-3.0.3-windows-x64.zip`，保留说明文档和许可文件。
-5. 运行 `TaskHarbor.exe`，通过贴边把手、托盘或已注册的快捷键打开面板。
+1. 打开 [GitHub Releases 下载页](https://github.com/Crazyer-Flove/TaskHarbor/releases)。
+2. 选择版本，推荐下载 `TaskHarbor-3.0.3-windows-x64.zip`，包含 EXE、文档和许可说明。
+3. 解压后运行 `TaskHarbor.exe`，通过屏幕右上方把手、托盘或快捷键打开工作区。
+4. 也可直接下载 [TaskHarbor.exe](https://github.com/Crazyer-Flove/TaskHarbor/releases/download/v3.0.3/TaskHarbor.exe)，并保留同一 Release 提供的 WebView2 许可与第三方说明。
+5. 如需校验文件完整性，可对照 Release 中的 `SHA256SUMS.txt`。
 
-当前工作流提供 Windows ZIP 与校验值，**不会自动创建 GitHub Release**。产物过期时可按下文步骤自行构建。
+Release 附件提供公开下载，并附带源码压缩包和版本清单。[Windows CI 产物](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml)继续用于开发构建；CI 工作流自身不自动发布 Release。
 
 从旧版 DeskTodo 升级时，首次正常启动前先退出旧版，避免同时修改旧版自定义路径中的任务文件。
 

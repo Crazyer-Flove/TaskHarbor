@@ -72,13 +72,13 @@ The embedded WebView2 **SDK** wrappers do not replace the installed **Runtime**.
 
 ### Download a Windows build
 
-1. Open [Windows build and test](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml).
-2. Select a successful run for the version or commit you want.
-3. Download the **TaskHarbor-windows-x64** artifact. GitHub may require sign-in for Actions downloads.
-4. Extract the artifact, then extract its `TaskHarbor-3.0.3-windows-x64.zip`. Keep the accompanying notices and documentation.
-5. Run `TaskHarbor.exe`. Use the edge handle, tray or registered capture shortcut to open the panel.
+1. Open [GitHub Releases](https://github.com/Crazyer-Flove/TaskHarbor/releases).
+2. Choose the version you want. The recommended download is `TaskHarbor-3.0.3-windows-x64.zip`, which includes the executable, documentation and license notices.
+3. Extract the ZIP and run `TaskHarbor.exe`. Use the top-right edge handle, tray or registered capture shortcut to open the panel.
+4. Alternatively, download the standalone [TaskHarbor.exe](https://github.com/Crazyer-Flove/TaskHarbor/releases/download/v3.0.3/TaskHarbor.exe) and keep the accompanying WebView2 license and third-party notices from the same Release.
+5. Check file integrity against the Release's `SHA256SUMS.txt` if needed.
 
-The workflow uploads a Windows ZIP and checksums. It does **not** automatically publish a GitHub Release. If an artifact has expired, build from source below.
+Release assets are public downloads. Source archives and a version manifest are also attached. [Windows CI artifacts](https://github.com/Crazyer-Flove/TaskHarbor/actions/workflows/ci.yml) remain available for development builds; the CI workflow itself does not publish Releases automatically.
 
 Exit the previous DeskTodo application before the first normal launch so both applications do not write to a shared legacy task path.
 
